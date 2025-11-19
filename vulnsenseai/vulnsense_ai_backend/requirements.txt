@@ -1,0 +1,16 @@
+asgiref
+Django
+django-cors-headers
+djangorestframework
+djangorestframework_simplejwt
+numpy
+pandas
+psycopg2-binary
+PyJWT
+python-dateutil
+pytz
+six
+sqlparse
+typing_extensions
+tzdata
+langchain_ollama

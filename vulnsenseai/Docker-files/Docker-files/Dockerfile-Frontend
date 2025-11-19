@@ -1,0 +1,26 @@
+#Building base image
+#FROM node:18-alpine AS build
+FROM nginx:latest
+
+#Specifing the "working directory"  in the image where files will be copied
+WORKDIR /app
+
+#To copy files from the host and put them into the container image.
+COPY package.json./
+
+#To run the specified command.
+
+ENV set http_proxy=http://proxy.tcs.com:8080
+ENV set https_proxy=http://proxy.tcs.com:8080
+RUN npm install
+
+ENV export{http,https}_proxy=http://proxy.tcs.com:8080
+
+COPY ..
+
+#indicates a port the image would like to expose.
+EXPOSE 5000
+
+#CMD ["npm" ,"run" , "dev" , "--", "host" , "0.0.0.0"]
+CMD ["nginx", "-g", "daemon off;"]
+

@@ -1,0 +1,32 @@
+#Building base image
+
+#FROM python:3.11-slim
+FROM FROM nginx:latest
+
+#Creating environment varaible
+
+ENV PYTHONBUFFERD1
+
+#Creating working directory where we can run image
+
+WORKDIR /app
+
+#Copying the requiremets file
+
+COPY requiremets.txt
+
+#Running specificc command
+ENV set http_proxy=http://proxy.tcs.com:8080
+ENV set https_proxy=http://proxy.tcs.com:8080
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+#Copying files
+
+COPY ..
+
+#Specifying Port
+
+EXPOSE 8000
+
+CMD["python","manage.py","runserver","0.0.0.0:8000"]

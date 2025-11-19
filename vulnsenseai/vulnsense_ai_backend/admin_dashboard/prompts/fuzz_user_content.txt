@@ -1,0 +1,3 @@
+authorization_present: true
+authorization_metadata: {"authorized_by": "ACME Security", "scope": "test-sandbox", "timestamp": "2025-10-13T10:00:00+05:30"}
+Task: Generate an initial test_suite covering the vulnerability categories. Provide 3 representative sanitized test cases per category. Output must conform exactly to the JSON schema in your instructions.

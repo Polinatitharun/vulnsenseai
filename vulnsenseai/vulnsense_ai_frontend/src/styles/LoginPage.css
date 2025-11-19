@@ -1,0 +1,320 @@
+/* Container */
+.vs-login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0e7ff 0%, #ffffff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.vs-login-container {
+  width: 100%;
+  max-width: 50%;
+  background-color: #ffffff; /* white background for contrast */
+  border: 1px solid #d1d5db; /* light gray border */
+  border-radius: 12px; /* rounded corners */
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15); /* soft shadow */
+  padding: 32px 24px; /* inner spacing */
+  transition: all 0.3s ease;
+}
+
+/* Optional: hover effect for subtle emphasis */
+.vs-login-container:hover {
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+  border-color: #a5b4fc; /* light accent on hover */
+}
+
+
+/* Back Button */
+.vs-back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.vs-back-button:hover {
+  color: #111827;
+
+
+}
+
+.vs-btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Header */
+.vs-login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.vs-login-logo {
+  width: 64px;
+  height: 64px;
+  background-color: #1e40af;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+}
+
+.vs-logo-icon {
+  width: 32px;
+  height: 32px;
+  color: #ffffff;
+}
+
+.vs-login-header h1 {
+  font-size: 28px;
+  margin: 0 0 8px 0;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.vs-login-header p {
+  font-size: 16px;
+  color: #4b5563;
+  margin: 0;
+}
+
+/* Role Cards */
+.vs-quick-login-grid {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 24px;
+  transition: all 0.5s ease;
+}
+
+.vs-quick-login-card {
+  flex: 1;
+  max-width: 220px;
+  height: 10%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+  border-radius: 1rem;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: all 0.5s ease;
+  padding: 20px;
+  text-align: center;
+  transform: scale(1);
+}
+
+.vs-quick-login-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+}
+
+.vs-quick-login-card.selected {
+  transform: translateY(-20px) scale(1.05);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+}
+
+.vs-role-selected .vs-quick-login-card:not(.selected) {
+  transform: scale(0.75) translateY(-40px);
+  opacity: 0.5;
+}
+
+/* Admin / SuperAdmin colors */
+.vs-admin-card {
+  background: linear-gradient(145deg, #b45309, #f97316);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 8px 20px rgba(180, 83, 9, 0.4);
+}
+
+.vs-superadmin-card {
+  background: linear-gradient(145deg, #5b21b6, #9333ea);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 8px 20px rgba(91, 33, 182, 0.4);
+}
+
+.vs-quick-login-header h3 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.vs-quick-login-content {
+  margin-top: 12px;
+}
+
+/* Buttons for Role Cards */
+.vs-btn {
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.vs-btn-admin,
+.vs-btn-superadmin {
+  border: none;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.vs-btn-admin {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.vs-btn-admin:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.vs-btn-superadmin {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.vs-btn-superadmin:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Added vs-btn-outline class to match original JSX */
+.vs-btn-outline {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background-color: transparent;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.vs-btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Login Form Animation */
+.vs-login-card {
+  background-color: linear-gradient(145deg, #b45309, #f97316);
+  border-radius: 12px;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+  padding: 28px;
+  margin-top: 24px;
+  transition: transform 0.5s ease, background 0.5s ease;
+  z-index: 10;
+}
+
+
+.vs-login-card-header h2 {
+  text-align: center;
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  color: #1f2937;
+}
+
+.vs-login-card-header p {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0;
+}
+
+.vs-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vs-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.vs-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.vs-input-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+}
+
+.vs-form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.vs-input-with-icon {
+  padding-left: 40px;
+}
+
+.vs-input-with-action {
+  padding-right: 40px;
+}
+
+.vs-input-action {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.vs-action-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Primary Button */
+.vs-btn-primary {
+  background-color: #1e40af;
+  color: #ffffff;
+  padding: 12px 16px;
+}
+
+.vs-btn-primary:hover {
+  background-color: #1e3a8a;
+}
+
+.vs-btn-full {
+  width: 100%;
+}
+
+/* Footer */
+.vs-login-footer {
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .vs-login-container {
+    max-width: 100%;
+  }
+
+  .vs-quick-login-grid {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

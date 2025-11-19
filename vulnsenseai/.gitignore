@@ -1,0 +1,68 @@
+# Byte-compiled / optimized / compiled files
+*.pyc
+__pycache__/
+*.egg-info/
+.eggs/
+
+vulnsense_ai_backend1
+
+# Environments
+.env/
+venv/
+env/
+
+responses
+
+*__pycache__
+*migrations
+# Django-specific files
+*.log
+*.pot
+db.sqlite3
+local_settings.py
+media/  # Or specific subdirectories  within media if needed, e.g., media/uploads/
+__pychche__
+# IDE-specific files
+.idea/  # PyCharm
+.vscode/ # VS Code (if you have user-specific settings you don't want to share)
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+.coverage
+
+# Tox
+.tox/
+
+# Other temporary files
+*~
+*.swp
+
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+temp
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

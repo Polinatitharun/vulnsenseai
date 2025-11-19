@@ -1,0 +1,30 @@
+{
+      "name": "Create VulnSense AI Login Page",
+      "version": "0.1.0",
+      "private": true,
+      "dependencies": {
+            "axios": "^1.12.2",
+            "lucide-react": "^0.487.0",
+            "react": "^18.3.1",
+            "react-data-table-component": "^7.7.0",
+            "react-dom": "^18.3.1",
+            "react-icons": "^5.5.0",
+            "react-router-dom": "^7.9.3",
+            "rechart": "^0.0.1",
+            "recharts": "^3.4.1",
+            "sonner": "^2.0.7",
+            "universal-cookie": "^8.0.1"
+      },
+      "devDependencies": {
+            "@types/node": "^20.10.0",
+            "@types/react": "^19.1.16",
+            "@types/react-dom": "^19.1.9",
+            "@vitejs/plugin-react": "^5.0.4",
+            "@vitejs/plugin-react-swc": "^3.10.2",
+            "vite": "6.3.5"
+      },
+      "scripts": {
+            "dev": "vite",
+            "build": "vite build"
+      }
+}

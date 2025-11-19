@@ -1,0 +1,20 @@
+version:"3.8"
+services:
+  backend:
+    build:
+    build: ./vulnsense_ai_backend
+    ports:
+      -"8000:8000"
+  volumes:
+    -./vulnsense_ai_backend:/app
+  command: python manager.py runserver
+
+  frontend:
+    build:
+    build: ./vulnsense_ai_frontend
+    ports:
+      -"3000:5000"
+  depends-on:
+    -backend
+  command: npm run dev -- --host 0.0.00
+
