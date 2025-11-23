@@ -1031,3 +1031,137 @@ class SecurityScanView(APIView):
         }
         serializer=TestingSerializer(security_test,data=testing_data,partial=True)
         return Response("Security Scan is completed! Check for the Report",status=status.HTTP_201_CREATED)
+
+
+import requests
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+import json
+
+class DropdownModelsView(APIView):
+    """
+    API endpoint to fetch available models from Ollama server
+    """
+    
+    def append_log(self, message):
+        """Append message to responses/dropdown_logs.txt with timestamp."""
+        LOG_PATH = os.path.join(RESPONSES_DIR, 'dropdown_logs.txt')
+        with open(LOG_PATH, 'a', encoding='utf-8') as f:
+            f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+            f.flush()
+
+    def post(self, request):
+        try:
+            self.append_log(f"Dropdown models request from user: {request.user.username}")
+            
+            # Get URL from request data
+            url = request.data.get('url', '').strip()
+            
+            if not url:
+                self.append_log("No URL provided in request")
+                return Response(
+                    {"error": "URL is required"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            self.append_log(f"Fetching models from URL: {url}")
+            
+            # Normalize the URL - ensure it ends with /api/tags
+            if not url.endswith('/api/tags'):
+                if url.endswith('/v1/models'):
+                    # Convert from OpenAI format to Ollama format
+                    url = url.replace('/v1/models', '/api/tags')
+                elif not url.endswith('/'):
+                    url = f"{url}/api/tags"
+                else:
+                    url = f"{url}api/tags"
+            
+            self.append_log(f"Normalized URL: {url}")
+            
+            # Make request to Ollama server
+            headers = {
+                'Content-Type': 'application/json',
+            }
+            
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                response.raise_for_status()
+                
+                self.append_log(f"Successfully connected to Ollama server, status: {response.status_code}")
+                
+            except requests.exceptions.RequestException as e:
+                self.append_log(f"Error connecting to Ollama server: {str(e)}")
+                return Response(
+                    {"error": f"Cannot connect to Ollama server: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Parse the response
+            try:
+                data = response.json()
+                self.append_log(f"Raw response from Ollama: {json.dumps(data)[:200]}...")
+                
+                # Extract model names from Ollama response
+                models = []
+                if 'models' in data:
+                    for model in data['models']:
+                        model_name = model.get('name', '')
+                        if model_name:
+                            models.append(model_name)
+                
+                self.append_log(f"Extracted {len(models)} models: {models}")
+                
+                if not models:
+                    self.append_log("No models found in the response")
+                    return Response(
+                        {"error": "No models found on the server"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+                # Return models as a dictionary (frontend expects Object.values)
+                models_dict = {f"model_{i}": model for i, model in enumerate(models)}
+                
+                self.append_log(f"Returning models: {models_dict}")
+                return Response(models_dict, status=status.HTTP_200_OK)
+                
+            except json.JSONDecodeError as e:
+                self.append_log(f"Invalid JSON response from server: {str(e)}")
+                return Response(
+                    {"error": "Invalid response from server - not a valid Ollama endpoint"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            self.append_log(f"Unexpected error in dropdown view: {str(e)}")
+            return Response(
+                {"error": f"Internal server error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# Alternative version that also supports manual model list
+class DropdownModelsManualView(APIView):
+    """
+    Alternative dropdown that returns fixed models for testing
+    """
+    
+    def post(self, request):
+        try:
+            # Your specific models
+            manual_models = [
+                "llama:7b",
+                "codellama:latest", 
+                "lava:7b",
+                "deepseek-r1:14b"
+            ]
+            
+            # Convert to dictionary format that frontend expects
+            models_dict = {f"model_{i}": model for i, model in enumerate(manual_models)}
+            
+            return Response(models_dict, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESPONSES_DIR = os.path.join(BASE_DIR, 'responses')
 os.makedirs(RESPONSES_DIR, exist_ok=True)
-
 class TargetModelListCreateDeleteView(APIView):
     # permission_classes = [IsAdmin]
     def append_log(self, message):
@@ -75,6 +74,50 @@ class TargetModelListCreateDeleteView(APIView):
             self.append_log(f"Error creating target model for user {request.user.username}: {str(e)}")
             return Response(f"{str(e)}", status=status.HTTP_400_BAD_REQUEST)
 
+    def put(self, request, pk=None):
+        """
+        UPDATE existing target - for editing functionality
+        """
+        try:
+            self.append_log(f"Updating target model with pk: {pk} by user: {request.user.username} with data: {request.data}")
+            logger.info("Updating target model with pk: %s", pk)
+            
+            # Get the target object
+            target = get_object_or_404(Target, pk=pk)
+            self.append_log(f"Found target model with pk: {pk} - {target}")
+            
+            # Validate that user owns this target (security check)
+            if target.user != request.user:
+                self.append_log(f"User {request.user.username} attempted to update target they don't own")
+                return Response(
+                    {"error": "You don't have permission to edit this target"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Update the target with new data (partial update allowed)
+            serializer = TargetModelSerializer(target, data=request.data, partial=True)
+            if serializer.is_valid():
+                updated_target = serializer.save()
+                SystemActivity.objects.create(action="update_target")
+                logger.info("Target model updated successfully: %s", updated_target)
+                self.append_log(f"Target model updated successfully: {updated_target.id} - {updated_target}")
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            
+            logger.warning("Invalid serializer data for update: %s", serializer.errors)
+            self.append_log(f"Invalid serializer data for target model update: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            logger.error("Error updating target model: %s", str(e))
+            self.append_log(f"Error updating target model with pk: {pk}: {str(e)}")
+            return Response(f"{str(e)}", status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk=None):
+        """
+        PATCH method - same as PUT but explicitly for partial updates
+        """
+        return self.put(request, pk)
+
     def delete(self, request, pk):
         try:
             self.append_log(f"Deleting target model with pk: {pk} by user: {request.user.username}")
@@ -90,6 +133,67 @@ class TargetModelListCreateDeleteView(APIView):
             logger.error("Error deleting target model: %s", str(e))
             self.append_log(f"Error deleting target model with pk: {pk}: {str(e)}")
             return Response(f"{str(e)}", status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# class TargetModelListCreateDeleteView(APIView):
+#     # permission_classes = [IsAdmin]
+#     def append_log(self, message):
+#         """Append message to responses/target_model_logs.txt with timestamp."""
+#         LOG_PATH = os.path.join(RESPONSES_DIR, 'target_model_logs.txt')
+#         with open(LOG_PATH, 'a', encoding='utf-8') as f:
+#             f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+#             f.flush()
+
+#     def get(self, request):
+#         try:
+#             self.append_log(f"Fetching target models for user: {request.user.username} (ID: {request.user.id})")
+#             logger.info("Fetching target models for user: %s", request.user)
+#             models = Target.objects.filter(user=request.user)
+#             self.append_log(f"Retrieved {len(models)} target models for user: {request.user.username}")
+#             serializer = TargetModelSerializer(models, many=True)
+#             logger.info("Successfully fetched %d models", len(models))
+#             self.append_log(f"Serialized {len(models)} target models successfully")
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         except Exception as e:
+#             logger.error("Error fetching models: %s", str(e))
+#             self.append_log(f"Error fetching target models for user {request.user.username}: {str(e)}")
+#             return Response(f"{str(e)}", status=status.HTTP_400_BAD_REQUEST)
+
+#     def post(self, request):
+#         try:
+#             self.append_log(f"Creating new target model for user: {request.user.username} with data: {request.data}")
+#             logger.info("Creating new target model for user: %s", request.user)
+#             serializer = TargetModelSerializer(data=request.data)
+#             if serializer.is_valid():
+#                 target = serializer.save(user=request.user)
+#                 SystemActivity.objects.create(action="add_target")
+#                 logger.info("Target model created successfully: %s", target)
+#                 self.append_log(f"Target model created successfully: {target.id} - {target}")
+#                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+#             logger.warning("Invalid serializer data: %s", serializer.errors)
+#             self.append_log(f"Invalid serializer data for target model creation: {serializer.errors}")
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         except Exception as e:
+#             logger.error("Error creating target model: %s", str(e))
+#             self.append_log(f"Error creating target model for user {request.user.username}: {str(e)}")
+#             return Response(f"{str(e)}", status=status.HTTP_400_BAD_REQUEST)
+
+#     def delete(self, request, pk):
+#         try:
+#             self.append_log(f"Deleting target model with pk: {pk} by user: {request.user.username}")
+#             logger.info("Deleting target model with pk: %s", pk)
+#             target = get_object_or_404(Target, pk=pk)
+#             self.append_log(f"Found target model with pk: {pk} - {target}")
+#             SystemActivity.objects.create(action="delete_target")
+#             target.delete()
+#             logger.info("Target model deleted successfully: %s", target)
+#             self.append_log(f"Target model with pk: {pk} deleted successfully")
+#             return Response(f"{target} is deleted", status=status.HTTP_200_OK)
+#         except Exception as e:
+#             logger.error("Error deleting target model: %s", str(e))
+#             self.append_log(f"Error deleting target model with pk: {pk}: {str(e)}")
+#             return Response(f"{str(e)}", status=status.HTTP_400_BAD_REQUEST)
 
 class ManualSanitizationView(APIView):
     # permission_classes = [IsAdmin]
@@ -2043,3 +2147,702 @@ import json
 from .models import Target
 
 
+#added
+
+import requests
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+import json
+
+class DropdownModelsView(APIView):
+    """
+    API endpoint to fetch available models from Ollama server
+    """
+    
+    def append_log(self, message):
+        """Append message to responses/dropdown_logs.txt with timestamp."""
+        LOG_PATH = os.path.join(RESPONSES_DIR, 'dropdown_logs.txt')
+        with open(LOG_PATH, 'a', encoding='utf-8') as f:
+            f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+            f.flush()
+
+    def post(self, request):
+        try:
+            self.append_log(f"Dropdown models request from user: {request.user.username}")
+            
+            # Get URL from request data
+            url = request.data.get('url', '').strip()
+            
+            if not url:
+                self.append_log("No URL provided in request")
+                return Response(
+                    {"error": "URL is required"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            self.append_log(f"Fetching models from URL: {url}")
+            
+            # Normalize the URL - ensure it ends with /api/tags
+            if not url.endswith('/api/tags'):
+                if url.endswith('/v1/models'):
+                    # Convert from OpenAI format to Ollama format
+                    url = url.replace('/v1/models', '/api/tags')
+                elif not url.endswith('/'):
+                    url = f"{url}/api/tags"
+                else:
+                    url = f"{url}api/tags"
+            
+            self.append_log(f"Normalized URL: {url}")
+            
+            # Make request to Ollama server
+            headers = {
+                'Content-Type': 'application/json',
+            }
+            
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                response.raise_for_status()
+                
+                self.append_log(f"Successfully connected to Ollama server, status: {response.status_code}")
+                
+            except requests.exceptions.RequestException as e:
+                self.append_log(f"Error connecting to Ollama server: {str(e)}")
+                return Response(
+                    {"error": f"Cannot connect to Ollama server: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Parse the response
+            try:
+                data = response.json()
+                self.append_log(f"Raw response from Ollama: {json.dumps(data)[:200]}...")
+                
+                # Extract model names from Ollama response
+                models = []
+                if 'models' in data:
+                    for model in data['models']:
+                        model_name = model.get('name', '')
+                        if model_name:
+                            models.append(model_name)
+                
+                self.append_log(f"Extracted {len(models)} models: {models}")
+                
+                if not models:
+                    self.append_log("No models found in the response")
+                    return Response(
+                        {"error": "No models found on the server"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+                # Return models as a dictionary (frontend expects Object.values)
+                models_dict = {f"model_{i}": model for i, model in enumerate(models)}
+                
+                self.append_log(f"Returning models: {models_dict}")
+                return Response(models_dict, status=status.HTTP_200_OK)
+                
+            except json.JSONDecodeError as e:
+                self.append_log(f"Invalid JSON response from server: {str(e)}")
+                return Response(
+                    {"error": "Invalid response from server - not a valid Ollama endpoint"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            self.append_log(f"Unexpected error in dropdown view: {str(e)}")
+            return Response(
+                {"error": f"Internal server error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# Alternative version that also supports manual model list
+class DropdownModelsManualView(APIView):
+    """
+    Alternative dropdown that returns fixed models for testing
+    """
+    
+    def post(self, request):
+        try:
+            # Your specific models
+            manual_models = [
+                "llama:7b",
+                "codellama:latest", 
+                "lava:7b",
+                "deepseek-r1:14b"
+            ]
+            
+            # Convert to dictionary format that frontend expects
+            models_dict = {f"model_{i}": model for i, model in enumerate(manual_models)}
+            
+            return Response(models_dict, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
+
+
+class ComprehensiveAnalysisView(APIView):
+    """Comprehensive analysis that aggregates results from all test types"""
+    
+    def append_log(self, message):
+        """Append message to responses/analysis_logs.txt with timestamp."""
+        LOG_PATH = os.path.join(RESPONSES_DIR, 'analysis_logs.txt')
+        with open(LOG_PATH, 'a', encoding='utf-8') as f:
+            if len(message) > 500:
+                message = message[:500] + "...[truncated]"
+            f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+            f.flush()
+
+    def get_test_metrics(self, target_id):
+        """Extract all metrics from different test types for a target"""
+        metrics = {
+            'fuzz_test': {},
+            'load_test': {}, 
+            'security_scan': {},
+            'overall_scores': {}
+        }
+        
+        try:
+            # Get fuzz test metrics
+            fuzz_tests = Testing.objects.filter(target_id=target_id, test="fuzz_testing", test_status="completed")
+            if fuzz_tests.exists():
+                latest_fuzz = fuzz_tests.latest('created_at')
+                if latest_fuzz.results:
+                    # Extract accuracy score from fuzz test
+                    if isinstance(latest_fuzz.results, dict):
+                        metrics['fuzz_test'] = {
+                            'accuracy_score': latest_fuzz.results.get('overa_acc_score', 0),
+                            'total_tests': len(latest_fuzz.results) - 1,  # Exclude the overall score entry
+                            'test_id': latest_fuzz.id,
+                            'created_at': latest_fuzz.created_at
+                        }
+            
+            # Get load test metrics
+            load_tests = Testing.objects.filter(target_id=target_id, test="load_testing", test_status="completed")
+            if load_tests.exists():
+                latest_load = load_tests.latest('created_at')
+                if latest_load.results and isinstance(latest_load.results, dict):
+                    metrics['load_test'] = {
+                        'load_score': latest_load.results.get('load_score', 0),
+                        'accuracy_score': latest_load.results.get('accuracy_score', 0),
+                        'load_weight': latest_load.results.get('load_weight', 0),
+                        'performance_score': self.calculate_performance_score(latest_load.results),
+                        'test_id': latest_load.id,
+                        'created_at': latest_load.created_at
+                    }
+            
+            # Get security scan metrics
+            security_tests = Testing.objects.filter(target_id=target_id, test="security_scan", test_status="completed")
+            if security_tests.exists():
+                latest_security = security_tests.latest('created_at')
+                if latest_security.results and isinstance(latest_security.results, dict):
+                    security_metrics = self.calculate_security_metrics(latest_security.results)
+                    metrics['security_scan'] = {
+                        **security_metrics,
+                        'test_id': latest_security.id,
+                        'created_at': latest_security.created_at
+                    }
+            
+            # Calculate overall scores
+            metrics['overall_scores'] = self.calculate_overall_scores(metrics)
+            
+        except Exception as e:
+            self.append_log(f"Error extracting metrics for target {target_id}: {str(e)}")
+        
+        return metrics
+
+    def calculate_performance_score(self, load_results):
+        """Calculate performance score from load test results"""
+        try:
+            load_score = load_results.get('load_score', 0)
+            accuracy_score = load_results.get('accuracy_score', 0)
+            load_weight = load_results.get('load_weight', 0.5)
+            
+            # Weighted average of load and accuracy scores
+            performance_score = (load_score * load_weight + accuracy_score * (1 - load_weight))
+            return round(performance_score, 2)
+        except:
+            return 0
+
+    def calculate_security_metrics(self, security_results):
+        """Calculate comprehensive security metrics"""
+        try:
+            vulnerabilities = []
+            risk_scores = []
+            status_counts = {'PASS': 0, 'FAIL': 0, 'WARN': 0}
+            
+            for vuln_name, result in security_results.items():
+                if isinstance(result, dict):
+                    risk_score = result.get('risk_score', 0)
+                    risk_scores.append(risk_score)
+                    
+                    # Determine status based on risk score
+                    if risk_score < 0.3:
+                        status_counts['PASS'] += 1
+                    elif risk_score < 0.7:
+                        status_counts['WARN'] += 1
+                    else:
+                        status_counts['FAIL'] += 1
+                    
+                    vulnerabilities.append({
+                        'name': vuln_name,
+                        'risk_score': risk_score,
+                        'status': 'PASS' if risk_score < 0.5 else 'FAIL',
+                        'vulnerability_counts': result.get('vulnerability_counts', {})
+                    })
+            
+            avg_risk_score = sum(risk_scores) / len(risk_scores) if risk_scores else 0
+            security_score = max(0, 100 - (avg_risk_score * 100))  # Convert to percentage
+            
+            return {
+                'security_score': round(security_score, 2),
+                'average_risk_score': round(avg_risk_score, 3),
+                'total_vulnerabilities': len(vulnerabilities),
+                'passed_tests': status_counts['PASS'],
+                'failed_tests': status_counts['FAIL'],
+                'warning_tests': status_counts['WARN'],
+                'vulnerabilities': vulnerabilities
+            }
+        except Exception as e:
+            self.append_log(f"Error calculating security metrics: {str(e)}")
+            return {
+                'security_score': 0,
+                'average_risk_score': 0,
+                'total_vulnerabilities': 0,
+                'passed_tests': 0,
+                'failed_tests': 0,
+                'warning_tests': 0,
+                'vulnerabilities': []
+            }
+
+    def calculate_overall_scores(self, metrics):
+        """Calculate overall scores and rankings"""
+        try:
+            fuzz_score = metrics['fuzz_test'].get('accuracy_score', 0)
+            load_performance = metrics['load_test'].get('performance_score', 0)
+            security_score = metrics['security_scan'].get('security_score', 0)
+            
+            # Weighted overall score (adjust weights as needed)
+            weights = {
+                'security': 0.4,    # Security is most critical
+                'fuzz': 0.35,       # Fuzz testing for robustness
+                'load': 0.25        # Load testing for performance
+            }
+            
+            overall_score = (
+                security_score * weights['security'] +
+                fuzz_score * weights['fuzz'] +
+                load_performance * weights['load']
+            )
+            
+            # Determine overall grade
+            if overall_score >= 90:
+                grade = 'A+'
+                rating = 'Excellent'
+            elif overall_score >= 80:
+                grade = 'A'
+                rating = 'Very Good'
+            elif overall_score >= 70:
+                grade = 'B'
+                rating = 'Good'
+            elif overall_score >= 60:
+                grade = 'C'
+                rating = 'Average'
+            elif overall_score >= 50:
+                grade = 'D'
+                rating = 'Below Average'
+            else:
+                grade = 'F'
+                rating = 'Poor'
+            
+            return {
+                'overall_score': round(overall_score, 2),
+                'grade': grade,
+                'rating': rating,
+                'weights_used': weights,
+                'component_scores': {
+                    'security': security_score,
+                    'fuzz_testing': fuzz_score,
+                    'load_performance': load_performance
+                }
+            }
+        except Exception as e:
+            self.append_log(f"Error calculating overall scores: {str(e)}")
+            return {
+                'overall_score': 0,
+                'grade': 'F',
+                'rating': 'Incomplete',
+                'weights_used': {},
+                'component_scores': {}
+            }
+
+    def compare_models(self, all_metrics):
+        """Compare multiple models and generate rankings"""
+        try:
+            models_comparison = []
+            
+            for target_id, metrics in all_metrics.items():
+                target = Target.objects.get(id=target_id)
+                overall_scores = metrics['overall_scores']
+                
+                models_comparison.append({
+                    'target_id': target_id,
+                    'model_name': target.model_name,
+                    'overall_score': overall_scores['overall_score'],
+                    'grade': overall_scores['grade'],
+                    'rating': overall_scores['rating'],
+                    'security_score': metrics['security_scan'].get('security_score', 0),
+                    'fuzz_score': metrics['fuzz_test'].get('accuracy_score', 0),
+                    'load_performance': metrics['load_test'].get('performance_score', 0),
+                    'risk_score': metrics['security_scan'].get('average_risk_score', 0)
+                })
+            
+            # Sort by overall score (descending)
+            models_comparison.sort(key=lambda x: x['overall_score'], reverse=True)
+            
+            # Add rankings
+            for i, model in enumerate(models_comparison):
+                model['rank'] = i + 1
+                model['percentile'] = round((1 - (i / len(models_comparison))) * 100, 2)
+            
+            return models_comparison
+        except Exception as e:
+            self.append_log(f"Error comparing models: {str(e)}")
+            return []
+
+    def generate_detailed_analysis(self, metrics, target):
+        """Generate detailed analysis report for a single model"""
+        analysis = {
+            'model_info': {
+                'model_name': target.model_name,
+                'target_id': target.id,
+                'analysis_timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+            },
+            'executive_summary': {},
+            'detailed_breakdown': {},
+            'recommendations': [],
+            'strengths': [],
+            'weaknesses': []
+        }
+        
+        overall_scores = metrics['overall_scores']
+        fuzz_metrics = metrics['fuzz_test']
+        load_metrics = metrics['load_test']
+        security_metrics = metrics['security_scan']
+        
+        # Executive Summary
+        analysis['executive_summary'] = {
+            'overall_performance': overall_scores['rating'],
+            'final_grade': overall_scores['grade'],
+            'overall_score': overall_scores['overall_score'],
+            'key_strength': self.identify_key_strength(metrics),
+            'main_concern': self.identify_main_concern(metrics),
+            'test_coverage': self.calculate_test_coverage(metrics)
+        }
+        
+        # Detailed Breakdown
+        analysis['detailed_breakdown'] = {
+            'security_analysis': {
+                'score': security_metrics.get('security_score', 0),
+                'risk_level': self.get_risk_level(security_metrics.get('average_risk_score', 0)),
+                'passed_tests': security_metrics.get('passed_tests', 0),
+                'failed_tests': security_metrics.get('failed_tests', 0),
+                'critical_vulnerabilities': self.get_critical_vulnerabilities(security_metrics.get('vulnerabilities', [])),
+                'recommendation': self.get_security_recommendation(security_metrics)
+            },
+            'robustness_analysis': {
+                'fuzz_test_score': fuzz_metrics.get('accuracy_score', 0),
+                'total_fuzz_tests': fuzz_metrics.get('total_tests', 0),
+                'reliability_rating': self.get_reliability_rating(fuzz_metrics.get('accuracy_score', 0)),
+                'edge_case_handling': self.assess_edge_case_handling(fuzz_metrics)
+            },
+            'performance_analysis': {
+                'load_score': load_metrics.get('load_score', 0),
+                'performance_score': load_metrics.get('performance_score', 0),
+                'accuracy_under_load': load_metrics.get('accuracy_score', 0),
+                'scalability_assessment': self.assess_scalability(load_metrics)
+            }
+        }
+        
+        # Generate recommendations
+        analysis['recommendations'] = self.generate_recommendations(metrics)
+        
+        # Identify strengths and weaknesses
+        analysis['strengths'] = self.identify_strengths(metrics)
+        analysis['weaknesses'] = self.identify_weaknesses(metrics)
+        
+        return analysis
+
+    def identify_key_strength(self, metrics):
+        """Identify the model's key strength"""
+        scores = {
+            'Security': metrics['security_scan'].get('security_score', 0),
+            'Robustness': metrics['fuzz_test'].get('accuracy_score', 0),
+            'Performance': metrics['load_test'].get('performance_score', 0)
+        }
+        return max(scores.items(), key=lambda x: x[1])[0]
+
+    def identify_main_concern(self, metrics):
+        """Identify the main area of concern"""
+        scores = {
+            'Security': metrics['security_scan'].get('security_score', 0),
+            'Robustness': metrics['fuzz_test'].get('accuracy_score', 0),
+            'Performance': metrics['load_test'].get('performance_score', 0)
+        }
+        return min(scores.items(), key=lambda x: x[1])[0]
+
+    def calculate_test_coverage(self, metrics):
+        """Calculate overall test coverage percentage"""
+        total_possible = 3  # fuzz, load, security
+        actual_coverage = sum([
+            1 if metrics['fuzz_test'] else 0,
+            1 if metrics['load_test'] else 0,
+            1 if metrics['security_scan'] else 0
+        ])
+        return round((actual_coverage / total_possible) * 100, 2)
+
+    def get_risk_level(self, risk_score):
+        """Convert risk score to risk level"""
+        if risk_score < 0.3:
+            return "Low"
+        elif risk_score < 0.6:
+            return "Medium"
+        else:
+            return "High"
+
+    def get_reliability_rating(self, fuzz_score):
+        """Convert fuzz score to reliability rating"""
+        if fuzz_score >= 90:
+            return "Highly Reliable"
+        elif fuzz_score >= 75:
+            return "Reliable"
+        elif fuzz_score >= 60:
+            return "Moderately Reliable"
+        else:
+            return "Unreliable"
+
+    def assess_edge_case_handling(self, fuzz_metrics):
+        """Assess edge case handling based on fuzz test results"""
+        score = fuzz_metrics.get('accuracy_score', 0)
+        if score >= 85:
+            return "Excellent edge case handling"
+        elif score >= 70:
+            return "Good edge case handling with minor issues"
+        elif score >= 50:
+            return "Moderate edge case handling, needs improvement"
+        else:
+            return "Poor edge case handling, significant issues"
+
+    def assess_scalability(self, load_metrics):
+        """Assess scalability based on load test results"""
+        performance_score = load_metrics.get('performance_score', 0)
+        if performance_score >= 90:
+            return "Excellent scalability"
+        elif performance_score >= 75:
+            return "Good scalability under load"
+        elif performance_score >= 60:
+            return "Moderate scalability, may struggle under high load"
+        else:
+            return "Poor scalability, significant performance degradation under load"
+
+    def get_critical_vulnerabilities(self, vulnerabilities):
+        """Identify critical vulnerabilities"""
+        return [vuln for vuln in vulnerabilities if vuln.get('risk_score', 0) >= 0.7]
+
+    def get_security_recommendation(self, security_metrics):
+        """Generate security recommendation"""
+        security_score = security_metrics.get('security_score', 0)
+        if security_score >= 90:
+            return "Security posture is excellent. Maintain current practices."
+        elif security_score >= 75:
+            return "Good security posture. Address minor vulnerabilities."
+        elif security_score >= 60:
+            return "Moderate security posture. Prioritize fixing high-risk vulnerabilities."
+        else:
+            return "Critical security issues detected. Immediate remediation required."
+
+    def generate_recommendations(self, metrics):
+        """Generate specific recommendations based on test results"""
+        recommendations = []
+        
+        # Security recommendations
+        security_score = metrics['security_scan'].get('security_score', 0)
+        if security_score < 70:
+            recommendations.append({
+                'category': 'Security',
+                'priority': 'High',
+                'recommendation': 'Address high-risk vulnerabilities identified in security scan',
+                'impact': 'Critical for production deployment'
+            })
+        
+        # Fuzz test recommendations
+        fuzz_score = metrics['fuzz_test'].get('accuracy_score', 0)
+        if fuzz_score < 75:
+            recommendations.append({
+                'category': 'Robustness',
+                'priority': 'Medium',
+                'recommendation': 'Improve handling of edge cases and malformed inputs',
+                'impact': 'Important for reliability'
+            })
+        
+        # Load test recommendations
+        load_performance = metrics['load_test'].get('performance_score', 0)
+        if load_performance < 70:
+            recommendations.append({
+                'category': 'Performance',
+                'priority': 'Medium',
+                'recommendation': 'Optimize model for better performance under load',
+                'impact': 'Important for scalability'
+            })
+        
+        # Sort by priority
+        priority_order = {'High': 1, 'Medium': 2, 'Low': 3}
+        recommendations.sort(key=lambda x: priority_order.get(x['priority'], 4))
+        
+        return recommendations
+
+    def identify_strengths(self, metrics):
+        """Identify model strengths"""
+        strengths = []
+        
+        if metrics['security_scan'].get('security_score', 0) >= 85:
+            strengths.append("Strong security posture with minimal vulnerabilities")
+        
+        if metrics['fuzz_test'].get('accuracy_score', 0) >= 85:
+            strengths.append("Excellent robustness in handling various inputs")
+        
+        if metrics['load_test'].get('performance_score', 0) >= 85:
+            strengths.append("Outstanding performance under load conditions")
+        
+        if not strengths:
+            strengths.append("Adequate performance across standard test scenarios")
+        
+        return strengths
+
+    def identify_weaknesses(self, metrics):
+        """Identify model weaknesses"""
+        weaknesses = []
+        
+        if metrics['security_scan'].get('security_score', 0) < 60:
+            weaknesses.append("Significant security vulnerabilities need addressing")
+        
+        if metrics['fuzz_test'].get('accuracy_score', 0) < 60:
+            weaknesses.append("Poor handling of edge cases and unexpected inputs")
+        
+        if metrics['load_test'].get('performance_score', 0) < 60:
+            weaknesses.append("Performance degradation under load conditions")
+        
+        if not weaknesses:
+            weaknesses.append("No critical weaknesses identified")
+        
+        return weaknesses
+
+    def get(self, request):
+        """Get analysis for all models or specific model"""
+        try:
+            target_id = request.GET.get('target_id')
+            comparison = request.GET.get('comparison', 'false').lower() == 'true'
+            
+            self.append_log(f"Starting comprehensive analysis for target: {target_id}, comparison: {comparison} by user: {request.user.username}")
+            
+            if comparison:
+                # Compare all models
+                all_targets = Target.objects.all()
+                all_metrics = {}
+                
+                for target in all_targets:
+                    metrics = self.get_test_metrics(target.id)
+                    all_metrics[target.id] = metrics
+                
+                comparison_data = self.compare_models(all_metrics)
+                
+                response_data = {
+                    'analysis_type': 'model_comparison',
+                    'total_models_compared': len(comparison_data),
+                    'comparison_timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'models': comparison_data,
+                    'summary': {
+                        'best_model': comparison_data[0] if comparison_data else None,
+                        'worst_model': comparison_data[-1] if comparison_data else None,
+                        'average_score': round(sum(m['overall_score'] for m in comparison_data) / len(comparison_data), 2) if comparison_data else 0
+                    }
+                }
+                
+            elif target_id:
+                # Single model analysis
+                target = get_object_or_404(Target, id=target_id)
+                metrics = self.get_test_metrics(target_id)
+                detailed_analysis = self.generate_detailed_analysis(metrics, target)
+                
+                response_data = {
+                    'analysis_type': 'single_model',
+                    'model_name': target.model_name,
+                    'target_id': target_id,
+                    'analysis_timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'metrics': metrics,
+                    'detailed_analysis': detailed_analysis
+                }
+            else:
+                return Response({"error": "Either target_id or comparison=true is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            self.append_log(f"Analysis completed successfully")
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            error_msg = f"Error in comprehensive analysis: {str(e)}"
+            logger.error(error_msg)
+            self.append_log(error_msg)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+        """Generate analysis report with specific parameters"""
+        try:
+            target_ids = request.data.get('target_ids', [])
+            analysis_type = request.data.get('analysis_type', 'comprehensive')
+            
+            self.append_log(f"Generating analysis report for targets: {target_ids}, type: {analysis_type} by user: {request.user.username}")
+            
+            if not target_ids:
+                return Response({"error": "target_ids is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            analysis_results = []
+            for target_id in target_ids:
+                target = get_object_or_404(Target, id=target_id)
+                metrics = self.get_test_metrics(target_id)
+                
+                if analysis_type == 'comprehensive':
+                    analysis = self.generate_detailed_analysis(metrics, target)
+                else:
+                    analysis = {
+                        'model_name': target.model_name,
+                        'target_id': target_id,
+                        'overall_score': metrics['overall_scores']['overall_score'],
+                        'grade': metrics['overall_scores']['grade'],
+                        'security_score': metrics['security_scan'].get('security_score', 0),
+                        'fuzz_score': metrics['fuzz_test'].get('accuracy_score', 0),
+                        'load_performance': metrics['load_test'].get('performance_score', 0)
+                    }
+                
+                analysis_results.append(analysis)
+            
+            response_data = {
+                'analysis_type': analysis_type,
+                'generated_at': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'total_models': len(analysis_results),
+                'results': analysis_results
+            }
+            
+            self.append_log(f"Analysis report generated for {len(analysis_results)} models")
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            error_msg = f"Error generating analysis report: {str(e)}"
+            logger.error(error_msg)
+            self.append_log(error_msg)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

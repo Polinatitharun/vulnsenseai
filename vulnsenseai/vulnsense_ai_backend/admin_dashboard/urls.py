@@ -1,8 +1,15 @@
 from django.urls import path
 from .views import *
 
+
+from .views import DropdownModelsView, DropdownModelsManualView
+
 urlpatterns = [
+    path('targets/', TargetModelListCreateDeleteView.as_view(), name='target-list-create'),
+    path('targets/<int:pk>/', TargetModelListCreateDeleteView.as_view(), name='target-detail'),
     path("models/", TargetModelListCreateDeleteView.as_view(), name="model-list-create"),
+    # Add this line to your existing urlpatterns: for edit
+    path('models/<int:pk>/', TargetModelListCreateDeleteView.as_view(), name='target-detail'),
     #path("sanitization/manual/", ManualPromptGetAPI.as_view(),name="manual-sanitization"),
     path("sanitization/", ManualSanitizationView.as_view(), name="manual-sanitization-post"),
     path('list-sanitizations/', SanitizationAPIView.as_view(), name='sanitization-list'),
@@ -30,8 +37,10 @@ urlpatterns = [
     path('securitygraph/<int:test_id>',SecurityScanGraph.as_view(),name="overall graph view"),
     path('securityanalytics/<int:test_id>',SecurityScanAnalytics.as_view(),name="analytics view"),
     path('loadpdf/<int:pk>',LoadTestPDF.as_view(),name="Load Test Pdf"),
-    path('loadtestgraph/<int:pk>',LoadTestGraph.as_view(),name="Load Graph")
-    
+    path('loadtestgraph/<int:pk>',LoadTestGraph.as_view(),name="Load Graph"),
+    path('dropdown/', DropdownModelsView.as_view(), name='dropdown-models'),
+    path('dropdown-manual/', DropdownModelsManualView.as_view(), name='dropdown-manual'), 
+    path('api/analysis/', ComprehensiveAnalysisView.as_view(), name='comprehensive-analysis'),  
 ]
 
 if settings.DEBUG:

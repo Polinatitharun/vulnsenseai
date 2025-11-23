@@ -213,7 +213,7 @@ export default function TestManagement() {
               setType("fuzz");
             }}
           >
-            <Zap className="btn-icon" /> Start Fuzz Test
+             Start Fuzz Test
           </button>
         </div>
 
@@ -230,7 +230,7 @@ export default function TestManagement() {
               setType("load");
             }}
           >
-            <Activity className="btn-icon" /> Start Load Test
+           Start Load Test
           </button>
         </div>
 
@@ -247,7 +247,7 @@ export default function TestManagement() {
               setType("security");
             }}
           >
-            <Scan className="btn-icon" /> Start Security Test
+             Start Security Test
           </button>
         </div>
       </div>

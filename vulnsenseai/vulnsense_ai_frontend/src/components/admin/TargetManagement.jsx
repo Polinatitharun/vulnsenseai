@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import { del, get, post } from '../auth/api';
+import { del, get, post,put } from '../auth/api';
 import { useLoader } from '../loader/Loadercontext';
 import { showToast } from '../common/Toast';
 
@@ -110,38 +110,75 @@ export default function TargetManagement({ setActiveSection }) {
     }
   };
 
-  const fetchModelOptions = async (url, formIdx) => {
-    if (!url.trim()) {
-      showToast("Please enter a valid URL first", "warning");
-      return;
+ //added function to fetch model options for dropdown
+
+
+const fetchModelOptions = async (url, formIdx) => {
+  if (!url.trim()) {
+    showToast("Please enter a valid URL first", "warning");
+    return;
+  }
+
+  setDropdownStates(prev => {
+    const copy = [...prev];
+    copy[formIdx] = { ...copy[formIdx], loading: true, options: [], open: false };
+    return copy;
+  });
+
+  try {
+    const payload = { url };
+    
+    // Try the main dropdown endpoint first
+    let data;
+    try {
+      data = await post('/api/dropdown/', payload);
+    } catch (error) {
+      console.warn('Main dropdown failed, trying manual endpoint:', error);
+      // Fallback to manual endpoint if main one fails
+      data = await post('/api/dropdown-manual/', payload);
     }
+
+    // Extract options - handle both array and object responses
+    let options = [];
+    if (Array.isArray(data)) {
+      options = data;
+    } else if (typeof data === 'object') {
+      options = Object.values(data).filter(Boolean);
+    }
+
+    // Sort models alphabetically for better UX
+    options.sort();
 
     setDropdownStates(prev => {
       const copy = [...prev];
-      copy[formIdx] = { ...copy[formIdx], loading: true, options: [], open: false };
+      copy[formIdx] = { 
+        ...copy[formIdx], 
+        loading: false, 
+        options, 
+        open: true 
+      };
       return copy;
     });
 
-    try {
-      const payload = { url };
-      const data = await post('/api/dropdown', payload);
-      const options = Object.values(data).filter(Boolean);
+    showToast(`Found ${options.length} models`, 'success');
 
-      setDropdownStates(prev => {
-        const copy = [...prev];
-        copy[formIdx] = { ...copy[formIdx], loading: false, options, open: true };
-        return copy;
-      });
-    } catch (err) {
-      console.error('Dropdown fetch error', err);
-      showToast('Failed to load models', 'error');
-      setDropdownStates(prev => {
-        const copy = [...prev];
-        copy[formIdx] = { ...copy[formIdx], loading: false, open: false };
-        return copy;
-      });
+  } catch (err) {
+    console.error('Dropdown fetch error', err);
+    
+    let errorMessage = 'Failed to load models';
+    if (err.response?.data?.error) {
+      errorMessage = err.response.data.error;
     }
-  };
+    
+    showToast(errorMessage, 'error');
+    
+    setDropdownStates(prev => {
+      const copy = [...prev];
+      copy[formIdx] = { ...copy[formIdx], loading: false, open: false };
+      return copy;
+    });
+  }
+};
 
   const toggleDropdown = (idx) => {
     setDropdownStates(prev => {
@@ -161,18 +198,36 @@ export default function TargetManagement({ setActiveSection }) {
   };
 
   // ⭐ NEW — Save edited target
-  const saveEditedTarget = async () => {
-    try {
-      await post(`/api/models/${editingTarget.id}/`, editingTarget);
-      showToast("Target Updated Successfully", "success");
-      setEditingTarget(null);
-      fetchTargets();
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to update target", "error");
-    }
-  };
+  // const saveEditedTarget = async () => {
+  //   try {
+  //     await post(`/api/models/${editingTarget.id}/`, editingTarget);
+  //     showToast("Target Updated Successfully", "success");
+  //     setEditingTarget(null);
+  //     fetchTargets();
+  //   } catch (err) {
+  //     console.error(err);
+  //     showToast("Failed to update target", "error");
+  //   }
+  // };
 
+
+
+  // ⭐ UPDATED — Save edited target
+// ⭐ UPDATED — Save edited target using PUT method
+const saveEditedTarget = async () => {
+  try {
+    showLoader();
+    await put(`api/models/${editingTarget.id}/`, editingTarget);
+    showToast("Target Updated Successfully", "success");
+    setEditingTarget(null);
+    fetchTargets();
+  } catch (err) {
+    console.error('Update error:', err);
+    showToast("Failed to update target", "error");
+  } finally {
+    hideLoader();
+  }
+};
   return (
     <div className="admin-content">
       <div className="section-header">
