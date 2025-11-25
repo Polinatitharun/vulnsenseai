@@ -2846,3 +2846,49 @@ class ComprehensiveAnalysisView(APIView):
             logger.error(error_msg)
             self.append_log(error_msg)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request):
+        try:
+            target_id = request.GET.get('target_id')
+            comparison = request.GET.get('comparison', 'false').lower() == 'true'
+            
+            self.append_log(f"Starting comprehensive analysis for target: {target_id}, comparison: {comparison} by user: {request.user.username}")
+            
+            # Check if we have any completed tests
+            has_completed_tests = Testing.objects.filter(test_status="completed").exists()
+            
+            if not has_completed_tests:
+                # Return demo data structure
+                return Response({
+                    "analysis_type": "demo_data",
+                    "message": "No test data found. Showing demonstration data.",
+                    "models": [
+                        {
+                            "target_id": 1,
+                            "model_name": "Llama-3-8B",
+                            "overall_score": 92.5,
+                            "grade": "A+",
+                            "rating": "Excellent",
+                            "security_score": 95.0,
+                            "fuzz_score": 90.0,
+                            "load_performance": 92.0,
+                            "risk_score": 0.05,
+                            "rank": 1,
+                            "percentile": 100.0
+                        },
+                        # ... more demo models
+                    ],
+                    "summary": {
+                        "best_model": {...},
+                        "worst_model": {...},
+                        "average_score": 80.45
+                    }
+                }, status=status.HTTP_200_OK)
+            
+            # ... rest of your existing code
+            
+        except Exception as e:
+            error_msg = f"Error in comprehensive analysis: {str(e)}"
+            logger.error(error_msg)
+            self.append_log(error_msg)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            

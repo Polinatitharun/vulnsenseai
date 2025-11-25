@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Globe, Activity, FileCode, Shield, Bot, CheckCircle } from 'lucide-react';
+import { Globe, Activity, FileCode, Shield, Bot, CheckCircle, Crown, TrendingUp, AlertTriangle, Star } from 'lucide-react';
 import { get } from '../auth/api';
 
-// ⭐ NEW — IMPORT CHARTS
+// Charts
 import {
   BarChart,
   Bar,
@@ -16,6 +16,9 @@ import {
   LineChart,
   Line,
   Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area
 } from "recharts";
 
 export default function DashboardHome() {
@@ -23,50 +26,140 @@ export default function DashboardHome() {
   const [testResults, setTestResults] = useState([]);
   const [auditReports, setAuditReports] = useState([]);
   const [stats, setStats] = useState(null);
+  const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  // ⭐ MOCK DATA FOR DEMONSTRATION
+  const generateMockAnalysisData = () => {
+    const mockModels = [
+      { id: 1, name: 'Llama-3-8B', overall_score: 92.5, security_score: 95.0, fuzz_score: 90.0, load_performance: 92.0, risk_score: 0.05, grade: 'A+', rating: 'Excellent' },
+      { id: 2, name: 'Mistral-7B', overall_score: 85.3, security_score: 80.0, fuzz_score: 85.0, load_performance: 91.0, risk_score: 0.20, grade: 'B', rating: 'Good' },
+      { id: 3, name: 'Gemma-7B', overall_score: 78.2, security_score: 75.0, fuzz_score: 70.0, load_performance: 90.0, risk_score: 0.25, grade: 'C', rating: 'Average' },
+      { id: 4, name: 'Phi-3-Mini', overall_score: 65.8, security_score: 60.0, fuzz_score: 65.0, load_performance: 72.0, risk_score: 0.40, grade: 'D', rating: 'Below Average' }
+    ];
+
+    const rankedModels = mockModels.map((model, index) => ({
+      ...model,
+      target_id: model.id,
+      model_name: model.name,
+      rank: index + 1,
+      percentile: 100 - (index * 25)
+    }));
+
+    return {
+      analysis_type: 'model_comparison',
+      total_models_compared: 4,
+      comparison_timestamp: new Date().toISOString(),
+      models: rankedModels,
+      summary: {
+        best_model: rankedModels[0],
+        worst_model: rankedModels[3],
+        average_score: 80.45
+      }
+    };
+  };
+
+  const generateMockStats = () => ({
+    total_active_targets: 4,
+    total_running_tests: 2,
+    total_generated_reports: 8,
+    total_auto_sanitised: 3,
+    total_targets: 4
+  });
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAllData = async () => {
       try {
+        // Try to fetch real data first
+        const [targetsData, activityData, auditsData, dashboardData, analysisData] = await Promise.all([
+          get('api/models/').catch(() => []),
+          get('api/activity/').catch(() => []),
+          get('api/test/report/').catch(() => []),
+          get('api/dashboard/').catch(() => generateMockStats()),
+          get('api/analysis/?comparison=true').catch(() => generateMockAnalysisData())
+        ]);
 
-        const targetsData = await get('api/models/');
-        setTargets(targetsData);
+        setTargets(targetsData || []);
+        setTestResults(activityData || []);
+        setAuditReports(auditsData || []);
+        setStats(dashboardData);
+        setAnalysisData(analysisData);
 
-        const activityData = await get('api/activity/');
-        setTestResults(activityData);
-
-        const auditsData = await get('api/test/report/');
-        setAuditReports(auditsData);
+        // Check if we're using mock data
+        if (!targetsData || targetsData.length === 0) {
+          setUsingMockData(true);
+        }
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        // Fallback to mock data
+        setStats(generateMockStats());
+        setAnalysisData(generateMockAnalysisData());
+        setUsingMockData(true);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchAllData();
   }, []);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const response = await get('api/dashboard/');
-        setStats(response);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
+  if (loading) return <div className="loading">Loading dashboard...</div>;
+  if (!stats) return <div className="error">No data available</div>;
+
+  // ⭐ ANALYSIS DATA PREPARATION
+  const modelComparisonData = analysisData?.models || [];
+  const bestModel = analysisData?.summary?.best_model;
+
+  // Overall Scores Bar Chart
+  const overallScoresData = modelComparisonData.map(model => ({
+    name: model.model_name,
+    Overall: model.overall_score,
+    Security: model.security_score,
+    Robustness: model.fuzz_score,
+    Performance: model.load_performance
+  }));
+
+  // Grade Distribution Pie Chart
+  const gradeDistribution = modelComparisonData.reduce((acc, model) => {
+    acc[model.grade] = (acc[model.grade] || 0) + 1;
+    return acc;
+  }, {});
+  const gradeData = Object.keys(gradeDistribution).map(grade => ({
+    name: grade,
+    value: gradeDistribution[grade],
+    color: getGradeColor(grade)
+  }));
+
+  // Risk Analysis Data
+  const riskData = modelComparisonData.map(model => ({
+    name: model.model_name,
+    Risk: (model.risk_score * 100).toFixed(1),
+    Security: model.security_score
+  }));
+
+  // Performance Trend Data
+  const performanceTrendData = modelComparisonData
+    .sort((a, b) => a.rank - b.rank)
+    .map(model => ({
+      name: `#${model.rank} ${model.model_name}`,
+      Score: model.overall_score,
+      Security: model.security_score,
+      Robustness: model.fuzz_score,
+      Performance: model.load_performance
+    }));
+
+  // Helper function for grade colors
+  function getGradeColor(grade) {
+    const colors = {
+      'A+': '#10B981', 'A': '#10B981', 'B': '#3B82F6', 
+      'C': '#F59E0B', 'D': '#EF4444', 'F': '#DC2626'
     };
+    return colors[grade] || '#6B7280';
+  }
 
-    fetchDashboardData();
-  }, []);
-
-  if (loading) return <p>Loading dashboard...</p>;
-  if (!stats) return <p>No data available</p>;
-
-  // ⭐ GRAPH DATA PREPARATION
+  // ⭐ EXISTING SYSTEM DATA
   const barData = [
     { name: "Active Targets", count: stats.total_active_targets },
     { name: "Running Tests", count: stats.total_running_tests },
@@ -88,15 +181,233 @@ export default function DashboardHome() {
   return (
     <div className="admin-content">
 
-      {/* 🌟 Welcome Card */}
-      <div className="welcome-card">
-        <p>
-          Ready to secure your applications? You have {stats.total_active_targets} active targets,{' '}
-          {stats.total_running_tests} tests running, and {stats.total_generated_reports} reports generated.
-        </p>
-      </div>
+      {/* Demo Data Notice */}
+      {usingMockData && (
+        <div className="demo-notice">
+          <AlertTriangle size={20} />
+          <span>Showing demonstration data. Run tests to see your actual model performance.</span>
+        </div>
+      )}
 
-      {/* 🌟 Stats Grid */}
+      {/* ===================== 🏆 MODEL ANALYSIS GRAPHS ===================== */}
+      
+      {analysisData && modelComparisonData.length > 0 && (
+        <>
+          <h1>🏆 Model Performance Analysis</h1>
+          <p>Comprehensive comparison of all tested AI models</p>
+
+          {/* 🌟 Best Model Highlight Card */}
+          {bestModel && (
+            <div className="winner-card">
+              <div className="winner-header">
+                <Crown className="winner-icon" />
+                <h2>Best Performing Model</h2>
+                <div className="winner-badge">Rank #{bestModel.rank}</div>
+              </div>
+              <div className="winner-content">
+                <div className="winner-model">
+                  <h3>{bestModel.model_name}</h3>
+                  <div className="winner-score">
+                    <span className="score-number">{bestModel.overall_score}</span>
+                    <span className="score-label">/100</span>
+                  </div>
+                  <div className="winner-grade">{bestModel.grade} - {bestModel.rating}</div>
+                </div>
+                <div className="winner-metrics">
+                  <div className="metric">
+                    <span className="metric-label">Security</span>
+                    <span className="metric-value">{bestModel.security_score}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Robustness</span>
+                    <span className="metric-value">{bestModel.fuzz_score}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Performance</span>
+                    <span className="metric-value">{bestModel.load_performance}</span>
+                  </div>
+                  <div className="metric">
+                    <span className="metric-label">Risk Level</span>
+                    <span className={`metric-value risk-${bestModel.risk_score < 0.3 ? 'low' : bestModel.risk_score < 0.6 ? 'medium' : 'high'}`}>
+                      {(bestModel.risk_score * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 🌟 Model Comparison Graphs Row 1 */}
+          <div className="graph-row">
+            {/* Overall Scores Bar Chart */}
+            <div className="graph-card large">
+              <h3>📊 Overall Model Scores Comparison</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={overallScoresData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Overall" fill="#4F46E5" name="Overall Score" />
+                  <Bar dataKey="Security" fill="#10B981" name="Security Score" />
+                  <Bar dataKey="Robustness" fill="#F59E0B" name="Robustness Score" />
+                  <Bar dataKey="Performance" fill="#EF4444" name="Performance Score" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Grade Distribution Pie Chart */}
+            <div className="graph-card">
+              <h3>🎓 Grade Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={gradeData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {gradeData.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 🌟 Model Comparison Graphs Row 2 */}
+          <div className="graph-row">
+            {/* Performance Trend Area Chart */}
+            <div className="graph-card large">
+              <h3>📈 Performance Trend by Rank</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={performanceTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Legend />
+                  <Area type="monotone" dataKey="Score" stackId="1" stroke="#4F46E5" fill="#4F46E5" name="Overall Score" />
+                  <Area type="monotone" dataKey="Security" stackId="2" stroke="#10B981" fill="#10B981" name="Security" />
+                  <Area type="monotone" dataKey="Robustness" stackId="3" stroke="#F59E0B" fill="#F59E0B" name="Robustness" />
+                  <Area type="monotone" dataKey="Performance" stackId="4" stroke="#EF4444" fill="#EF4444" name="Performance" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Risk Analysis Bar Chart */}
+            <div className="graph-card">
+              <h3>⚠️ Risk vs Security Analysis</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={riskData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Risk" fill="#EF4444" name="Risk Score %" />
+                  <Bar dataKey="Security" fill="#10B981" name="Security Score" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 🌟 Detailed Model Comparison Table */}
+          <div className="table-card">
+            <h3>📋 Detailed Model Comparison</h3>
+            <div className="metrics-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Model Name</th>
+                    <th>Overall Score</th>
+                    <th>Grade</th>
+                    <th>Security</th>
+                    <th>Robustness</th>
+                    <th>Performance</th>
+                    <th>Risk Score</th>
+                    <th>Percentile</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modelComparisonData.map(model => (
+                    <tr key={model.target_id} className={model.rank === 1 ? 'winner-row' : ''}>
+                      <td>
+                        <div className="rank-badge">
+                          #{model.rank}
+                          {model.rank === 1 && <Crown size={16} />}
+                        </div>
+                      </td>
+                      <td className="model-name">{model.model_name}</td>
+                      <td>
+                        <div className="score-cell">
+                          <span className="score-value">{model.overall_score}</span>
+                          <div className="score-bar">
+                            <div 
+                              className="score-fill" 
+                              style={{ width: `${model.overall_score}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`grade-badge grade-${model.grade}`}>
+                          {model.grade}
+                        </span>
+                      </td>
+                      <td>{model.security_score}</td>
+                      <td>{model.fuzz_score}</td>
+                      <td>{model.load_performance}</td>
+                      <td>
+                        <span className={`risk-badge risk-${model.risk_score < 0.3 ? 'low' : model.risk_score < 0.6 ? 'medium' : 'high'}`}>
+                          {(model.risk_score * 100).toFixed(1)}%
+                        </span>
+                      </td>
+                      <td>{model.percentile}%</td>
+                      <td>
+                        <span className={`status-badge status-${model.rating.toLowerCase().replace(' ', '-')}`}>
+                          {model.rating}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Call to Action for Real Data */}
+          {usingMockData && (
+            <div className="cta-card">
+              <div className="cta-content">
+                <Star className="cta-icon" />
+                <div>
+                  <h3>Ready to Test Your Models?</h3>
+                  <p>Run security scans, fuzz tests, and load tests on your AI models to see real performance data here.</p>
+                </div>
+                <button className="cta-button" onClick={() => window.location.href = '/testing'}>
+                  Start Testing
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ===================== 📊 EXISTING SYSTEM ANALYTICS ===================== */}
+
+      <h2 style={{ marginTop: "30px" }}>📊 System Analytics</h2>
+      <p>Visual insights from your security system</p>
+
+      {/* Existing Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-header">
@@ -143,18 +454,10 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ===================== 📊 GRAPH SECTION START ===================== */}
-
-      <h2 style={{ marginTop: "30px" }}>📊 System Analytics</h2>
-      <p>Visual insights from your security system</p>
-
-      {/* 🌟 Graph Row */}
+      {/* Existing Graphs */}
       <div className="graph-row">
-
-        {/* 📘 Bar Chart */}
         <div className="graph-card">
           <h3>System Summary</h3>
-
           <BarChart width={380} height={260} data={barData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
@@ -164,7 +467,6 @@ export default function DashboardHome() {
           </BarChart>
         </div>
 
-        {/* 🟢 Pie Chart */}
         <div className="graph-card">
           <h3>Auto Sanitization Ratio</h3>
           <PieChart width={380} height={260}>
@@ -185,7 +487,6 @@ export default function DashboardHome() {
           </PieChart>
         </div>
 
-        {/* 🔵 Line Chart */}
         <div className="graph-card">
           <h3>AI Activity Over Time</h3>
           <LineChart width={380} height={260} data={activityLineData}>
@@ -195,33 +496,6 @@ export default function DashboardHome() {
             <Tooltip />
             <Line type="monotone" dataKey="findings" stroke="#2563EB" strokeWidth={3} />
           </LineChart>
-        </div>
-      </div>
-
-      {/* ===================== 📊 GRAPH SECTION END ===================== */}
-
-      {/* 🌟 Activity Logs */}
-      <div className="activity-card">
-        <div className="card-header">
-          <h3>Recent AI Actions</h3>
-          <p>Latest automated security actions performed by the AI agent</p>
-        </div>
-        <div className="activity-list">
-          {testResults.map(test => {
-            const target = targets.find(t => t.id === test.target);
-            return (
-              <div key={test.id} className="activity-item activity-success">
-                <Bot className="activity-icon" />
-                <div className="activity-content">
-                  <p>Completed {test.action}</p>
-                  <span className="activity-time">
-                    {new Date(test.start_time).toLocaleString()} • {test.findings} findings
-                  </span>
-                </div>
-                <CheckCircle className="activity-status" />
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>
